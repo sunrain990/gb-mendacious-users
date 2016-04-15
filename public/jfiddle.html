@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="http://cdn.bootcss.com/jquery/2.1.4/jquery.min.js"></script>
+</head>
+<body>
+<canvas id="mdisplay" width="320" height="480">
+    <h2><em>No support for HTML5 and Canvas</em></h2>
+</canvas>
+    <script>
+        var canvas, ctx;
+        var gameLoop;
+        var fpsCount = 0;
+        var mapSize = 64;
+
+        var waterLevel = 40;
+        var mountainLevel = 175;
+
+        var yX = Math.floor(Math.random() * mapSize);
+        var yY = Math.floor(Math.random() * mapSize);
+
+        var offscreen_pixels;
+
+        $(function() {
+            canvas = document.getElementById('mdisplay');
+            ctx = canvas.getContext('2d');
+            canvas.width = document.width-20;
+            canvas.height = document.height-50;
+
+            gameTime = new Date().getTime();
+            runPerlin();
+            updateLoop();
+            drawMap();
+        });
+
+        window.addEventListener('keypress', function(e) {
+            console.log(e.keyCode);
+            switch(e.keyCode) {
+                case 119: //w
+                    if (yY > 0) {
+                        yY--;
+                    }
+                    break;
+                case 97: //a
+                    if (yX > 0) {
+                        yX--;
+                    }
+                    break;
+                case 115: //s
+                    if (yY < mapSize) {
+                        yY++;
+                    }
+                    break;
+                case 100: //d
+                    if (yX < mapSize) {
+                        yX++;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        });
+
+        function runPerlin() {
+            offscreen = document.createElement("canvas");
+            offscreen_ctx = offscreen.getContext("2d");
+            offscreen.width = mapSize/2;
+            offscreen.height = mapSize/2;
+            var offscreen_id = offscreen_ctx.getImageData(mapSize, mapSize, offscreen.width, offscreen.height);
+            offscreen_pixels = offscreen_id.data;
+            var i;
+
+            for (i = 0; i < offscreen_pixels.length; i++) {
+                offscreen_pixels[i    ] =
+                        offscreen_pixels[i + 1] =
+                                offscreen_pixels[i + 2] = Math.floor (Math.random () * 128);
+                offscreen_pixels[i + 3] = 255;
+            }
+
+            rows=0;
+            perlin = new Array(mapSize);
+            var curRow = 0;
+
+            for (j = 0; j < offscreen_pixels.length; j++) {
+                if ( j === 0 || j % mapSize === 0 ){
+                    perlin[rows] = [];
+                    curRow=rows;
+                    rows++;
+                }
+                perlin[curRow].push(offscreen_pixels[j]);
+            }
+
+            for (x = 0; x < perlin.length; x++) {
+                perlin[0][0] = 0;
+                perlin[x][0] = 0;
+                perlin[0][x] = 0;
+                perlin[perlin.length-1][x] = 0;
+                perlin[x][perlin.length-2] = 0;
+            }
+
+            var p1,p2,p3,p4,p5,p6,p7,p8,p9;
+            for (x = 0; x < perlin.length; x++) {
+                for (y = 0; y < perlin[x].length; y++) {
+
+                    if (x-1 > 0 && y-1 > 0) { p1 = perlin[x-1][y-1]; } else { p1 = 0; }
+                    if (y-1 > 0) { p2 = perlin[x][y-1]; } else { p2 = 0; }
+                    if (x+1 < perlin.length && y-1 > 0) { p3 = perlin[x+1][y-1]; } else { p3 = 0; }
+                    if (x-1 > 0) { p4 = perlin[x-1][y]; } else { p4 = 0; }
+                    if (x+1 < perlin.length) { p5 = perlin[x+1][y]; } else { p5 = 0; }
+                    if (x-1 > 0 && y+1 < perlin.length) { p6 = perlin[x-1][y+1]; } else { p6 = 0; }
+                    if (x+1 < perlin.length) { p7 = perlin[x+1][y]; } else { p7 = 0; }
+                    if (x-1 > 0 && y+1 < perlin.length) { p8 = perlin[x-1][y+1]; } else { p8 = 0; }
+                    p9 = perlin[x][y];
+
+                    var avg = parseInt((p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9)/9, 10);
+
+                    if (avg <= waterLevel) { //water
+                        avg = 0;
+                    }
+                    if (avg > mountainLevel) { //mountains
+                        avg = 255;
+                    }
+                    perlin[x][y] = avg;
+                }
+            }
+
+            var xx, yy;
+            for (xx = 1; xx < perlin.length-1; xx++) {
+                for (yy = 1; yy < perlin.length-1; yy++) {
+                    if (perlin[xx-1][yy] === 0 && perlin[xx+1][yy] === 0 && perlin[xx][yy-1] === 0 && perlin[xx][yy+1] === 0) {
+                        perlin[xx][yy] = 0;
+                    }
+                    if (perlin[xx-1][yy] === 0 && perlin[xx+1][yy] === 0 && perlin[xx][yy-1] === 0 && perlin[xx][yy+1] === 0) {
+                        perlin[xx][yy] = 0;
+                    }
+                }
+            }
+        }
+
+        function fps() {
+            document.title = fpsCount;
+        }
+
+        function rect(x,y,w,h,col) {
+            ctx.beginPath();
+            ctx.fillRect(x,y,w,h);
+            if (col) {
+                ctx.fillStyle = col;
+            }
+            //ctx.stroke();
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        var x, y;
+        function drawMap() {
+            for (x = 0; x < perlin.length; x++) {
+                for (y = 0; y < perlin[x].length; y++) {
+                    if (perlin[x][y] <= waterLevel) {
+                        rect(7*(x),7*(y), 7, 7, '#6fb4db'); //water
+                    } else {
+                        rect(7*(x),7*(y), 7, 7, 'rgb('+perlin[x][y]+','+ (perlin[x][y] + 50) +','+perlin[x][y]+')');
+                    }
+
+                    if (x === yX && y === yY) {
+                        rect(7*(x+2),7*(y+2), 7, 7, 'rgb(225,0,0)');
+                    }
+                }
+            }
+        }
+
+        function updateMap() {
+            //update display functions here
+
+            for (x = yX-8; x <= yX+8; x++) {
+                for (y = yY-8; y <= yY+8; y++) {
+
+                    if (x >= 0 && y >= 0 && x < mapSize && y < mapSize) {
+
+                        if (perlin[x][y] === 0) {
+                            rect(7*(x),7*(y), 7, 7, '#6fb4db'); //water
+                        } else {
+                            rect(7*(x),7*(y), 7, 7, 'rgb('+perlin[x][y]+','+ (perlin[x][y] + 50) +','+perlin[x][y]+')'); //land
+                        }
+
+                        if (x === yX && y === yY) {
+                            rect(7*(x),7*(y), 7, 7, 'rgb(225,0,0)'); //you
+                        }
+
+                    }
+
+                }
+            }
+        }
+
+        function updateDisplay() {
+            updateMap();
+            fps();
+        }
+
+        function updateLoop() {
+            updateDisplay();
+            timeSinceLastFrame = new Date().getTime() - gameTime;
+            gameTime = new Date().getTime();
+            fpsCount = Math.round(1000/timeSinceLastFrame);
+            gameLoop = setTimeout(function() {
+                requestAnimFrame(updateLoop, canvas);
+            }, 10);
+        }
+
+        window.requestAnimFrame = (function(){
+            return window.requestAnimationFrame ||
+                    window.webkitRequestAnimationFrame ||
+                    window.mozRequestAnimationFrame ||
+                    window.oRequestAnimationFrame ||
+                    window.msRequestAnimationFrame ||
+                    function(callback, element){
+                        window.setTimeout(callback, 1000 / 60);
+                    };
+        })();
+    </script>
+</body>
+</html>
