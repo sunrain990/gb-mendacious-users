@@ -19,14 +19,22 @@ function handlePool () {
         var hostname = os.hostname();
         //console.log(hostname,ipv4);
         if(ipv4 == '121.41.41.46'){
+            //pool = mysql.createPool({
+            //    host: 'rdsf39n5tp6w482946xa.mysql.rds.aliyuncs.com',
+            //    user: 'ecp_test',
+            //    password: 'ecp_test',
+            //    database: 'ecp',
+            //    port: 3306
+            //});
+            //console.log('informal');
             pool = mysql.createPool({
-                host: 'rdsf39n5tp6w482946xa.mysql.rds.aliyuncs.com',
-                user: 'ecp_test',
-                password: 'ecp_test',
+                host: 'rdsvy6jrfrbi2a2.mysql.rds.aliyuncs.com',
+                user: 'ecp',
+                password: 'CqmygDsx2s_MYSQL',
                 database: 'ecp',
                 port: 3306
             });
-            console.log('informal');
+            console.log('formal');
         }else if(ipv4 == '121.41.123.2'){
             pool = mysql.createPool({
                 host: 'rdsvy6jrfrbi2a2.mysql.rds.aliyuncs.com',
